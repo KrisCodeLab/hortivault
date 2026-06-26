@@ -5,7 +5,7 @@ from sensors import HygroTempSensor
 SENSOR_REGISTRY = {
     "HygroTempSensor": {
         "class": HygroTempSensor, 
-        "allowed_args": ["temp_offset", "hum_offset"]
+        "allowed_args": ["temp_offset", "hum_offset", "test_mode"]
     }
 }
 
@@ -43,7 +43,7 @@ def build_sensors(settings_json):
             
         # Sensor Parameter zusammenstellen
         kwargs : dict[str, object] = {
-            "test_mode": config.TEST_MODE,
+        #    "test_mode": config.TEST_MODE,
         }
 
         kwargs.update(assigned_pins) # Die ermittelten Pins hinzufügen

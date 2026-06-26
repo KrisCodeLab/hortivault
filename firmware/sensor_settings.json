@@ -2,8 +2,9 @@
   "sensors": {
     "Klima Gewächshaus": {
       "type": "HygroTempSensor",
-      "temp_offset": 3,
-      "hum_offset": -2
+      "temp_offset": 0,
+      "hum_offset": 0,
+      "test_mode": false
     }
   }
 }
