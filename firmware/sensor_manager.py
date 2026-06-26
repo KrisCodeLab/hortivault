@@ -1,17 +1,36 @@
 import config
-from sensors import HygroTempSensor
+import json
+from sensors import HygroTempSensor, SoilTempSensor
 
 # Registry mit allen bekannten Sensor-Klassen
 SENSOR_REGISTRY = {
     "HygroTempSensor": {
         "class": HygroTempSensor, 
         "allowed_args": ["temp_offset", "hum_offset", "test_mode"]
+    },
+
+    "SoilTempSensor": {
+        "class": SoilTempSensor, 
+        "allowed_args": ["temp_offset", "test_mode"]
     }
 }
 
+SENSOR_SETTINGS_PATH = "sensor_settings.json"
 
-def build_sensors(settings_json):
-    """Baut Sensor-Objekte basierend auf den Benutzereinstellungen und der config.py."""
+
+def load_and_build(settings_json=SENSOR_SETTINGS_PATH):
+    """Lädt die JSON-Datei und ruft _build_sensors auf."""
+    try:
+        with open(settings_json, 'r') as file:
+            settings = json.load(file)
+            return _build_sensors(settings)
+    except Exception as e:
+        print(f"[System Error] Konnte {settings_json} nicht laden: {e}")
+        return {}
+
+
+def _build_sensors(settings_json):
+    """Instanziiert Sensor-Objekte basierend auf den Benutzereinstellungen und der config.py."""
     active_sensors = {}
     used_pins = [] 
     

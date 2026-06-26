@@ -5,6 +5,12 @@
       "temp_offset": 0,
       "hum_offset": 0,
       "test_mode": false
+    },
+
+    "Boden Temperatur": {
+      "type": "SoilTempSensor",
+      "temp_offset": 0,
+      "test_mode": false
     }
   }
 }

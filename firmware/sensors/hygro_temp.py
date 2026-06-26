@@ -8,7 +8,6 @@ class HygroTempSensor:
     def __init__(self, i2c_bus, scl_pin, sda_pin, address, test_mode=False, temp_offset=0.0, hum_offset=0.0):
         self.test_mode = test_mode
         self.address = address
-        
         self.i2c_bus = i2c_bus
         self.scl_pin = scl_pin
         self.sda_pin = sda_pin
@@ -26,12 +25,13 @@ class HygroTempSensor:
 
     def _real_read(self):
         """Liest den CHT832X über SoftI2C aus."""
-        self.i2c = SoftI2C(
-            scl=Pin(self.scl_pin, Pin.PULL_UP), 
-            sda=Pin(self.sda_pin, Pin.PULL_UP), 
-            freq=10000
-        )
-        time.sleep(0.1)
+        if self.i2c is None:
+            self.i2c = SoftI2C(
+                scl=Pin(self.scl_pin, Pin.PULL_UP), 
+                sda=Pin(self.sda_pin, Pin.PULL_UP), 
+                freq=10000
+            )
+            time.sleep(0.1)
             
         try:
             self.i2c.writeto(self.address, bytes([0x24, 0x00]))
@@ -53,6 +53,7 @@ class HygroTempSensor:
             }
             
         except Exception as e:
+            self.i2c = None
             print(f"[Sensor Error] HygroTemp: {e}")
             return {"temperature": None, "humidity": None}
 

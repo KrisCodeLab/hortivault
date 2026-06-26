@@ -11,6 +11,10 @@
 HARDWARE_PINS = {
     "HygroTempSensor": [
         {"i2c_bus": 0, "scl_pin": 22, "sda_pin": 23, "address": 0x44}
+    ],
+
+    "SoilTempSensor": [
+        {"ds_pin": 15}
     ]
 }
 

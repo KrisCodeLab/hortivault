@@ -4,31 +4,23 @@ import sensor_manager
 
 print("hortivault – System bootet...")
 
-# sensor_settings laden
-try:
-    with open('sensor_settings.json', 'r') as file:
-        settings = json.load(file)
-except Exception as e:
-    print(f"Hinweis: 'sensor_settings.json' nicht gefunden oder leer. ({e})")
-    settings = {"sensors": {}}
-
-# Sensoren über den Manager instanziieren
-active_sensors = sensor_manager.build_sensors(settings)
+# Sensoreinstellungen laden und Sensoren initialisieren
+active_sensors = sensor_manager.load_and_build()
 
 print("\nAlle Sensoren initialisiert. Starte Messzyklus...\n")
 
 # Sensormesswerte kontinuierlich auslesen und ausgeben
 while True:
-    payload = {}
+    sensor_data = {}
     
     for sensor_name, sensor_obj in active_sensors.items():
         try:
-            payload[sensor_name] = sensor_obj.read()
+            sensor_data[sensor_name] = sensor_obj.read()
         except Exception as e:
-            payload[sensor_name] = {"error": str(e)}
+            sensor_data[sensor_name] = {"error": str(e)}
     
-    if payload:
-        print(json.dumps(payload))
+    if sensor_data:
+        print(json.dumps(sensor_data))
     else:
         print("[Warnung] Keine Sensoren aktiv.")
         
