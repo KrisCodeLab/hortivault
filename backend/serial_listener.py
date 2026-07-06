@@ -19,24 +19,27 @@ class SerialListener:
         """USB Port aktivieren, Puffer löschen, Daten auslesen und Daten in Queue schicken"""
         while True:
             try:
-                if self.interface == None:
+                if self.interface is None:
                     self.interface = serial.Serial(self.USB_PORT, self.BAUD, timeout=1)
-                    time.sleep(0.05)
+                    time.sleep(1)
                     self.interface.reset_input_buffer()
             except Exception as e:
+                
                 print(f"[ERROR]: {e} USB PORT {self.USB_PORT} nicht belegt!")
                 time.sleep(5)
                 continue
 
             while True:
                 try:
-                    if self.interface.in_waiting > 0:
-                        time.sleep(0.05)
-                        sensor_data = self.interface.readline().decode('utf-8').strip()
+                    sensor_data = self.interface.readline().decode('utf-8', errors='ignore').strip()
+                    if sensor_data:                        
                         try: 
                             self.queue.put(json.loads(sensor_data))
-                        except json.JSONDecodeError:
-                            print(sensor_data)
+                        except json.JSONDecodeError as e:
+                            if sensor_data.startswith("{") or sensor_data.endswith("}"):
+                                continue
+                            else:
+                                print(f"[SYSTEM]: {sensor_data}")
                 except Exception as e:
                     self.interface = None
                     print(f"[ERROR]: {e} USB PORT {self.USB_PORT} nicht belegt!")
@@ -53,4 +56,22 @@ class SerialListener:
         """Queue auslesen"""
         if not self.queue.empty():
             return self.queue.get()
-        
+
+
+if __name__ == "__main__":
+    
+    test_listener = SerialListener(USB_PORT='/dev/ttyUSB0', BAUD=115200)
+    test_listener.start_listener_thread()
+
+    print("Starte Datenabfrage...")
+    
+    try:
+        while True:
+            data = test_listener.get_data()
+            if data is not None:
+                print("Korrekte Daten empfangen:")
+                print(type(data))
+                print(data)
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        print("Programm durch Benutzer beendet.")

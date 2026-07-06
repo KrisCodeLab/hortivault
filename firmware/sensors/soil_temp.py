@@ -56,8 +56,8 @@ class SoilTempSensor:
                 "raw": {"temperature": {"value": int(temp * 16), "unit": self.RAW_UNIT}}
             }
             
-        except Exception as e:
-            print(f"[Sensor Error] SoilTemp: {e}")
+        except Exception:
+            print(f"[Sensor Error] SoilTemp: Kein Sensor an diesem Pin gefunden!")
             return self._sensor_error()
 
 

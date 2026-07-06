@@ -1,6 +1,0 @@
-### SERIAL READER CONFIG ###
-
-SERIAL_READER = {
-    "USB_PORT": '/dev/ttyUSB0',
-    "BAUD": 115200
-}

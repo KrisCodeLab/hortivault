@@ -231,4 +231,5 @@ backend/.vscode/settings.json
 # Betriebssystem-Dateien
 .DS_Store
 
-
+# Backend Configs
+backend/config.py

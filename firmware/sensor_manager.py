@@ -85,7 +85,9 @@ def _build_sensors(settings_json):
         try:
             sensor_object = SensorClass(**kwargs)
             active_sensors[sensor_name] = sensor_object
-            print(f"[Erfolg] '{sensor_name}' automatisch zugewiesen an: {assigned_pins}")
+            
+            pin_string = ", ".join([f"{key}: {value}" for key, value in assigned_pins.items()])
+            print(f"[Erfolg] '{sensor_name}' automatisch zugewiesen an: {pin_string}")
             
         except Exception as e:
             print(f"[Fehler] Konnte '{sensor_name}' nicht starten: {e}")
