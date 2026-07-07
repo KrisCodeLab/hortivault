@@ -20,7 +20,7 @@
 
     "Boden Feuchte": {
       "type": "SoilMoistureSensor",
-      "test_mode": true,
+      "test_mode": false,
       "air_value": 2646,
       "water_value": 0
     }
