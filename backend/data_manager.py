@@ -11,6 +11,7 @@ class DataManager:
         self.user = USER
         self.password = PASSWORD
         self.sensor_cache = {}
+        self.event_cache = {}
 
         self.connection = None
         self._connect()
@@ -27,7 +28,7 @@ class DataManager:
                                         port=self.port, 
                                         user=self.user, 
                                         password=self.password)
-        except psql.OperationalError as e:
+        except psql.Error as e:
             self.connection = None
             print(f"[DB ERROR]: {e}")
 
@@ -75,6 +76,9 @@ class DataManager:
             for data_pack in processed_data:
                 sensor_id = self._sensor_id_checker(data_pack["sensor_name"])
 
+                if self.connection is None:
+                    break
+
                 if sensor_id is None:
                     continue
 
@@ -84,12 +88,19 @@ class DataManager:
                 sql_command = "INSERT INTO sensor_data (sensor_id, measurements, is_test) VALUES (%s, %s, %s)"
                 cursor.execute(sql_command, (sensor_id, measurements, is_test))
 
-            self.connection.commit()   
-            cursor.close()
-
-        except psql.OperationalError as e:
+            if self.connection is not None:
+                self.connection.commit()   
+        
+        except psql.Error as e:
             self.connection = None
             print(f"[DB ERROR]: {e}")
+
+        finally:
+            if 'cursor' in locals():
+                try:
+                    cursor.close()
+                except Exception:
+                    pass  
 
     
     def _sensor_id_checker(self, sensor_name):
@@ -112,6 +123,7 @@ class DataManager:
 
             if result is None:
                     print(f"[DB ERROR]: Sensor '{sensor_name}' ist unbekannt in der HortiVault Datenbank!")
+                    cursor.close()
                     return
 
             sensor_id = result[0]
@@ -121,9 +133,48 @@ class DataManager:
 
             return sensor_id
         
-        except psql.OperationalError as e:
+        except psql.Error as e:
             self.connection = None
             print(f"[DB ERROR]: {e}")
+
+
+    def _sensor_event_checker(self, sensor_id, measurement):
+        """Überprüft ob sich ein offenes Event im cache oder in der DB befindet und gibt diese zurück."""
+        if (sensor_id, measurement) in self.event_cache:
+            
+                event = self.event_cache.get((sensor_id, measurement))
+                resolved = False
+                
+                return event, resolved
+            
+        if self.connection is None:
+            self._connect()
+
+        if self.connection is None:
+            return None, None
+            
+        try:
+            cursor = self.connection.cursor()
+            sql_command = "SELECT event, resolved FROM events WHERE sensor_id = %s and measurement_type = %s and resolved = false"
+            cursor.execute(sql_command, (sensor_id, measurement))
+            result = cursor.fetchone()
+
+            if result is not None:
+                event = result[0]
+                resolved = result[1]
+                self.event_cache[(sensor_id, measurement)] = event
+
+            else:
+                event = None
+                resolved = None
+
+            cursor.close()
+            return event, resolved
+
+        except psql.Error as e:
+            self.connection = None
+            print(f"[DB ERROR]: {e}")
+            return None, None
 
 
     def data_distributor(self, sensor_data):
@@ -158,23 +209,21 @@ class DataManager:
             for event_pack in events:
                 sensor_id = self._sensor_id_checker(event_pack["sensor_name"])
 
+                if self.connection is None:
+                    break
+
                 if sensor_id is None:
                     continue
                 
                 measurement = event_pack["measurement"]
                 new_event = event_pack["event"]
 
-                sql_command = "SELECT event, resolved FROM events WHERE sensor_id = %s and measurement_type = %s and resolved = false"
-                cursor.execute(sql_command, (sensor_id, measurement))
-                result = cursor.fetchone()
-                if result is not None:
-                    event = result[0]
-                    resolved = result[1]
-                else:
-                    event = None
-                    resolved = None
+                event, resolved = self._sensor_event_checker(sensor_id, measurement)
 
-                # keine Warnmeldung und keine ungelösten Events in der DB
+                if self.connection is None:
+                    break
+
+                # keine Warnmeldung und keine ungelösten Events in der DB oder cache
                 if resolved is None and new_event == "event_ok":
                     print("keine Warnmeldung und keine ungelösten Events in der DB")
                     continue
@@ -187,8 +236,9 @@ class DataManager:
                 # offenes Event gelöst und kein neues Event getriggert
                 if resolved is False and new_event == "event_ok":
                     print("offenes Event gelöst und kein neues Event getriggert")
-                    sql_command = "UPDATE events SET resolved = true WHERE sensor_id = %s and measurement_type = %s"
+                    sql_command = "UPDATE events SET resolved = true WHERE sensor_id = %s and measurement_type = %s and resolved = false"
                     cursor.execute(sql_command, (sensor_id, measurement))
+                    del self.event_cache[(sensor_id, measurement)]
                     continue
                 
                 # neues zu lösendes Event mit keinen offenen Events in der DB
@@ -198,23 +248,31 @@ class DataManager:
 
                     sql_command = "INSERT INTO events (sensor_id, measurement_type, event, triggered_value) VALUES (%s, %s, %s, %s)"
                     cursor.execute(sql_command, (sensor_id, measurement, new_event, value))
+                    self.event_cache[(sensor_id, measurement)] = new_event
                     continue
 
                 # Zustandsänderung von einem alten zu einem neuen zu lösenden Event
                 print("Zustandsänderung von einem alten zu einem neuen zu lösenden Event")
                 if resolved is False and new_event != event:
-                    sql_command = "UPDATE events SET resolved = true WHERE sensor_id = %s and measurement_type = %s"
+                    sql_command = "UPDATE events SET resolved = true WHERE sensor_id = %s and measurement_type = %s and resolved = false"
                     cursor.execute(sql_command, (sensor_id, measurement))
-
                     value = event_pack["value"]
 
                     sql_command = "INSERT INTO events (sensor_id, measurement_type, event, triggered_value) VALUES (%s, %s, %s, %s)"
                     cursor.execute(sql_command, (sensor_id, measurement, new_event, value))
+                    self.event_cache[(sensor_id, measurement)] = new_event
                     continue
-
-            self.connection.commit()   
-            cursor.close()
+            
+            if self.connection is not None:
+                self.connection.commit()   
         
-        except psql.OperationalError as e:
+        except psql.Error as e:
             self.connection = None
-            print(f"[DB ERROR]: {e}")      
+            print(f"[DB ERROR]: {e}")
+
+        finally:
+            if 'cursor' in locals():
+                try:
+                    cursor.close()
+                except Exception:
+                    pass  
