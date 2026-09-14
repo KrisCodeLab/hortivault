@@ -1,0 +1,28 @@
+{
+  "sensors": {
+    "Klima Gewächshaus": {
+      "type": "HygroTempSensor",
+      "temp_offset": 0,
+      "hum_offset": 0,
+      "test_mode": false
+    },
+
+    "Boden Temperatur": {
+      "type": "SoilTempSensor",
+      "temp_offset": 0,
+      "test_mode": false
+    },
+
+    "Licht": {
+      "type": "LightSensor",
+      "test_mode": false
+    },
+
+    "Boden Feuchte": {
+      "type": "SoilMoistureSensor",
+      "test_mode": false,
+      "air_value": 2646,
+      "water_value": 0
+    }
+  }
+}
