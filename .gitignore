@@ -220,3 +220,4 @@ __marimo__/
 
 # MicroPico
 firmware/.micropico
+backend/config.py
