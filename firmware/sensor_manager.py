@@ -44,8 +44,9 @@ def _build_sensors(settings_json):
     active_sensors = {}
     available_pins = None
     
-    for sensor_name, user_config in settings_json.get("sensors", {}).items():
+    for sensor_id, user_config in settings_json.get("sensors", {}).items():
         sensor_type = user_config.get("type")
+        sensor_name = user_config.get("display_name")
         
         # Check ob Sensortyp bekannt ist
         if sensor_type not in SENSOR_REGISTRY:
@@ -60,7 +61,7 @@ def _build_sensors(settings_json):
         available_pins = config.HARDWARE_PINS.get(sensor_type, [])
 
         if not available_pins:
-            print(f"[Fehler] Kein freier Steckplatz für '{sensor_name}' ({sensor_type}) verfügbar!")
+            print(f"[Fehler] Kein freier Steckplatz für '{sensor_id} / {sensor_name}' ({sensor_type}) verfügbar!")
             continue
 
         assigned_pins = available_pins[0]
@@ -79,12 +80,16 @@ def _build_sensors(settings_json):
         # Sensor-Objekt instanziieren und in active_sensors speichern
         try:
             sensor_object = sensor_class(**kwargs)
-            active_sensors[sensor_name] = sensor_object
+
+            active_sensors[sensor_id]= {
+                "object": sensor_object,
+                "display_name": sensor_name
+            }
             
             pin_string = ", ".join([f"{key}: {value}" for key, value in assigned_pins.items()])
-            print(f"[Erfolg] '{sensor_name}' automatisch zugewiesen an: {pin_string}")
+            print(f"[Erfolg] '{sensor_id} / {sensor_name}' zugewiesen an: {pin_string}")
             
         except Exception as e:
-            print(f"[Fehler] Konnte '{sensor_name}' nicht starten: {e}")
+            print(f"[Fehler] Konnte '{sensor_id} / {sensor_name}' nicht starten: {e}")
             
     return active_sensors

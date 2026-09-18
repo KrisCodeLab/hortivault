@@ -1,25 +1,29 @@
 {
   "sensors": {
-    "Klima Gewächshaus": {
+    "sensor_01": {
       "type": "HygroTempSensor",
+      "display_name": "Klima Gewächshaus",
       "temp_offset": 0,
       "hum_offset": 0,
       "test_mode": false
     },
 
-    "Boden Temperatur": {
+    "sensor_02": {
       "type": "SoilTempSensor",
+      "display_name": "Boden Temperatur",
       "temp_offset": 0,
       "test_mode": false
     },
 
-    "Licht": {
+    "sensor_03": {
       "type": "LightSensor",
+      "display_name": "Licht",
       "test_mode": false
     },
 
-    "Boden Feuchte": {
+    "sensor_04": {
       "type": "SoilMoistureSensor",
+      "display_name": "Boden Feuchte",
       "test_mode": false,
       "air_value": 2646,
       "water_value": 0

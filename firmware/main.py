@@ -16,15 +16,18 @@ print("\nAlle Sensoren initialisiert. Starte Messzyklus...\n")
 while True:
     sensor_data = {}
     
-    for sensor_name, sensor_obj in active_sensors.items():
+    for sensor_id, sensor_pack in active_sensors.items():
         try:
-            data = sensor_obj.read()
+            data = sensor_pack["object"].read()
 
             if data is not None:
-                sensor_data[sensor_name] = data
+                sensor_data[sensor_id] = {
+                "display_name": sensor_pack["display_name"],
+                "measurements": data
+            }
 
         except Exception as e:
-            print(f"[Fatal Error] Sensor '{sensor_name}' nicht erreichbar: {e}")
+            print(f"[Fatal Error] Sensor '{sensor_id}' nicht erreichbar: {e}")
     
     if sensor_data:
         try:
