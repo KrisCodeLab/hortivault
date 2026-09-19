@@ -59,7 +59,10 @@ class LightSensor:
 
 
     def _test_read(self):
-        """Generiert Mock-Daten für den Testmodus."""
+        """Deinitialisiert die Sensorhardware und Generiert Mock-Daten, wenn TEST_MODE in config.py = True gesetzt ist."""
+        if self.i2c is not None:
+            self.i2c = None
+
         raw_lux = random.randint(100, 5000)
         lux = raw_lux / 1.2
         

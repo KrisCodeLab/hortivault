@@ -220,4 +220,7 @@ __marimo__/
 
 # MicroPico
 firmware/.micropico
+
+# App Settings
 backend/config.py
+firmware/sensor_settings.json

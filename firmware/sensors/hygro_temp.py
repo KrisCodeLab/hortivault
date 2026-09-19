@@ -76,7 +76,10 @@ class HygroTempSensor:
 
 
     def _test_read(self):
-        """Generiert Mock-Daten für den Testmodus."""
+        """Deinitialisiert die Sensorhardware und Generiert Mock-Daten, wenn TEST_MODE in config.py = True gesetzt ist."""
+        if self.i2c is not None:
+            self.i2c = None
+
         temp_raw = random.randint(20000, 40000)
         humi_raw = random.randint(30000, 50000)
 

@@ -10,17 +10,14 @@ class SoilTempSensor:
 
 
     def __init__(self, ds_pin, test_mode, temp_offset=0.0):    
-        self.ds_pin = machine.Pin(ds_pin)
-        self.ow_bus = onewire.OneWire(self.ds_pin)
-        self.ds_sensor = ds18x20.DS18X20(self.ow_bus)
+        self.ds_pin = ds_pin
+        self.ds = None
+        self.ow_bus = None
+        self.ds_sensor = None
+        self.roms = None
 
         self.test_mode = test_mode
         self.temp_offset = temp_offset
-        
-        try:
-            self.roms = self.ds_sensor.scan()
-        except Exception:
-            self.roms = []
 
 
     def read(self):
@@ -34,12 +31,18 @@ class SoilTempSensor:
         """Liest den Sensor über das 1-Wire Protokoll aus."""
         if not self.roms:
             try:
+                self.ds = machine.Pin(self.ds_pin)
+                self.ow_bus = onewire.OneWire(self.ds)
+                self.ds_sensor = ds18x20.DS18X20(self.ow_bus)
                 self.roms = self.ds_sensor.scan()
             except Exception:
-                pass 
+                self.ds = None
+                self.ow_bus = None
+                self.ds_sensor = None
+                self.roms = None 
 
-        if not self.roms:
-            print("[Sensor Error] SoilTemp: Kein Sensor an diesem Pin gefunden!")
+        if self.ds_sensor is None or not self.roms:
+            print("[Sensor Error] SoilTemp: Sensor initialisierung fehlgeschlagen!")
             return self._sensor_error()
             
         try:
@@ -57,12 +60,17 @@ class SoilTempSensor:
             }
             
         except Exception:
-            print(f"[Sensor Error] SoilTemp: Kein Sensor an diesem Pin gefunden!")
+            print(f"[Sensor Error] SoilTemp: Sensor initialisierung fehlgeschlagen!")
             return self._sensor_error()
 
 
     def _test_read(self):
-        """Generiert Mock-Daten, wenn TEST_MODE in der config.py auf True steht."""
+        """Deinitialisiert die Sensorhardware und Generiert Mock-Daten, wenn TEST_MODE in der config.py == True gesetzt ist."""
+        self.ds = None
+        self.ow_bus = None
+        self.ds_sensor = None
+        self.roms = None
+
         temp = round(random.uniform(18.0, 22.0), 1)
         temp += self.temp_offset
         
