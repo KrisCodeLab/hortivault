@@ -44,7 +44,14 @@ class HygroTempSensor:
 
             # 6 Bytes vom Sensor lesen (Messdaten abholen)
             buf = self.i2c.readfrom(self.address, 6)
-            # Bytes 2 und 4 werden ignoriert (CRC-Bytes / Prüfsummen-Bytes)
+
+            # CRC-Bytes / Prüfsummen-Bytes validieren
+            if (self._calculate_crc(buf[0:2]) != buf[2] or
+                    self._calculate_crc(buf[3:5]) != buf[5]):
+                print("[Sensor Error] HygroTemp: CRC not validated")
+                return self._sensor_error()
+                
+            # Byte 1+2 sowie 4+5 zu je 16 Bit zusammensetzen (Bit-Shifting)
             temp_raw = (buf[0] << 8) | buf[1]
             humi_raw = (buf[3] << 8) | buf[4]
             
@@ -102,6 +109,20 @@ class HygroTempSensor:
                 "humidity": {"value": humi_raw, "unit": self.UNIT_RAW}
             }
         }
+
+    def _calculate_crc(self, data):
+        """CRC-Byte anhand der Messwertbytes errechnen"""
+        crc = 0xFF
+
+        for byte in data:
+            crc ^= byte
+
+            for _ in range(8):
+                if crc & 0x80:
+                    crc = ((crc << 1) ^ 0x31) & 0xFF
+                else:
+                    crc = (crc << 1) & 0xFF
+        return crc
     
 
     def _sensor_error(self):
