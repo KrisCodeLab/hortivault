@@ -6,6 +6,7 @@ import gc
 print("HortiVault – System bootet...")
 
 gc.collect()
+MEASUREMENT_DATA_PREFIX = "MEASUREMENT|"
 
 # Sensoreinstellungen laden und Sensoren initialisieren
 active_sensors = sensor_manager.load_and_build()
@@ -31,7 +32,7 @@ while True:
     
     if sensor_data:
         try:
-            print(json.dumps(sensor_data))
+            print(MEASUREMENT_DATA_PREFIX + json.dumps(sensor_data))
             
         # Excpetion, falls der Server nicht erreichbar ist oder der Puffer blockiert ist
         except OSError as e:
