@@ -36,12 +36,14 @@ class DataManager:
         processed_data = []
 
         for sensor, data in sensor_data.items():
-            sensor_name = sensor
-            measurements = {"real": data["real"], "raw": data["raw"]}
-            is_test = data["is_test"]
+            sensor_id = sensor
+            display_name = data["display_name"]
+            measurements = {"real": data["measurements"]["real"], "raw": data["measurements"]["raw"]}
+            is_test = data["measurements"]["is_test"]
                 
             data_pack = {
-                "sensor_name": sensor_name,
+                "sensor_id": sensor_id,
+                "display_name": display_name,
                 "measurements": measurements,
                 "is_test": is_test
             }
@@ -53,7 +55,7 @@ class DataManager:
     def _live_data(self, processed_data):
         """Ausgabe der Live Daten"""
         for data_pack in processed_data:
-            sensor_name = data_pack["sensor_name"]
+            sensor_name = data_pack["display_name"]
             measurements = data_pack["measurements"]["real"]
             
             print(f"{sensor_name}:")
@@ -72,19 +74,19 @@ class DataManager:
             cursor = self.connection.cursor()
         
             for data_pack in processed_data:
-                sensor_id = self._sensor_id_checker(data_pack["sensor_name"])
+                sensor_pk = self._sensor_id_checker(data_pack["sensor_id"])
 
                 if self.connection is None:
                     break
 
-                if sensor_id is None:
+                if sensor_pk is None:
                     continue
 
                 measurements = json.dumps(data_pack["measurements"])
                 is_test = data_pack["is_test"]
 
                 sql_command = "INSERT INTO sensor_data (sensor_id, measurements, is_test) VALUES (%s, %s, %s)"
-                cursor.execute(sql_command, (sensor_id, measurements, is_test))
+                cursor.execute(sql_command, (sensor_pk, measurements, is_test))
 
             if self.connection is not None:
                 self.connection.commit()   
@@ -101,10 +103,10 @@ class DataManager:
                     pass  
 
     
-    def _sensor_id_checker(self, sensor_name):
+    def _sensor_id_checker(self, sensor_id):
         """Überprüft ob sich ein Sensor im cache oder in der DB befindet und gibt dessen ID zurück"""
-        if sensor_name in self.sensor_cache:
-            return self.sensor_cache[sensor_name]
+        if sensor_id in self.sensor_cache:
+            return self.sensor_cache[sensor_id]
 
         if self.connection is None:
             self._connect()
@@ -114,22 +116,22 @@ class DataManager:
         
         try:
             cursor = self.connection.cursor()
-            sql_command = "SELECT id FROM sensors WHERE name = %s"
+            sql_command = "SELECT id FROM sensors WHERE technical_id = %s"
             
-            cursor.execute(sql_command, (sensor_name,))
+            cursor.execute(sql_command, (sensor_id,))
             result = cursor.fetchone()
 
             if result is None:
-                    print(f"[DB ERROR]: Sensor '{sensor_name}' ist unbekannt in der HortiVault Datenbank!")
+                    print(f"[DB ERROR]: Sensor '{sensor_id}' ist unbekannt in der HortiVault Datenbank!")
                     cursor.close()
                     return
 
-            sensor_id = result[0]
+            sensor_pk = result[0]
             cursor.close()
 
-            self.sensor_cache[sensor_name] = sensor_id
+            self.sensor_cache[sensor_id] = sensor_pk
 
-            return sensor_id
+            return sensor_pk
         
         except psql.Error as e:
             self.connection = None
@@ -205,18 +207,18 @@ class DataManager:
             cursor = self.connection.cursor()
 
             for event_pack in events:
-                sensor_id = self._sensor_id_checker(event_pack["sensor_name"])
+                sensor_pk = self._sensor_id_checker(event_pack["sensor_id"])
 
                 if self.connection is None:
                     break
 
-                if sensor_id is None:
+                if sensor_pk is None:
                     continue
                 
                 measurement = event_pack["measurement"]
                 new_event = event_pack["event"]
 
-                event, resolved = self._sensor_event_checker(sensor_id, measurement)
+                event, resolved = self._sensor_event_checker(sensor_pk, measurement)
 
                 if self.connection is None:
                     break
@@ -235,8 +237,8 @@ class DataManager:
                 if resolved is False and new_event == "event_ok":
                     print("offenes Event gelöst und kein neues Event getriggert")
                     sql_command = "UPDATE events SET resolved = true WHERE sensor_id = %s and measurement_type = %s and resolved = false"
-                    cursor.execute(sql_command, (sensor_id, measurement))
-                    del self.event_cache[(sensor_id, measurement)]
+                    cursor.execute(sql_command, (sensor_pk, measurement))
+                    del self.event_cache[(sensor_pk, measurement)]
                     continue
                 
                 # neues zu lösendes Event mit keinen offenen Events in der DB
@@ -245,20 +247,20 @@ class DataManager:
                     value = event_pack["value"]
 
                     sql_command = "INSERT INTO events (sensor_id, measurement_type, event, triggered_value) VALUES (%s, %s, %s, %s)"
-                    cursor.execute(sql_command, (sensor_id, measurement, new_event, value))
-                    self.event_cache[(sensor_id, measurement)] = new_event
+                    cursor.execute(sql_command, (sensor_pk, measurement, new_event, value))
+                    self.event_cache[(sensor_pk, measurement)] = new_event
                     continue
 
                 # Zustandsänderung von einem alten zu einem neuen zu lösenden Event
                 print("Zustandsänderung von einem alten zu einem neuen zu lösenden Event")
                 if resolved is False and new_event != event:
                     sql_command = "UPDATE events SET resolved = true WHERE sensor_id = %s and measurement_type = %s and resolved = false"
-                    cursor.execute(sql_command, (sensor_id, measurement))
+                    cursor.execute(sql_command, (sensor_pk, measurement))
                     value = event_pack["value"]
 
                     sql_command = "INSERT INTO events (sensor_id, measurement_type, event, triggered_value) VALUES (%s, %s, %s, %s)"
-                    cursor.execute(sql_command, (sensor_id, measurement, new_event, value))
-                    self.event_cache[(sensor_id, measurement)] = new_event
+                    cursor.execute(sql_command, (sensor_pk, measurement, new_event, value))
+                    self.event_cache[(sensor_pk, measurement)] = new_event
                     continue
             
             if self.connection is not None:

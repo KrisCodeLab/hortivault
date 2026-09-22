@@ -44,7 +44,10 @@ def _build_sensors(settings_json):
     active_sensors = {}
     available_pins = None
     
-    for sensor_id, user_config in settings_json.get("sensors", {}).items():
+    sensors = settings_json.get("sensors", {})
+
+    for sensor_id in sorted(sensors):
+        user_config = sensors[sensor_id]
         sensor_type = user_config.get("type")
         sensor_name = user_config.get("display_name")
         

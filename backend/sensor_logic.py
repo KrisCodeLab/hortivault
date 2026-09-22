@@ -39,20 +39,20 @@ def data_converter(sensor_data):
     und fügt diese an die bestehende JSON an
     """
     for data in sensor_data.values():
-        real_data = data["real"]
+        real_data = data["measurements"]["real"]
 
         if "humidity" in real_data and "temperature" in real_data:
             air_hum = real_data["humidity"]["value"]
             air_temp = real_data["temperature"]["value"]
 
             vpd = vpd_converter(air_temp=air_temp, rh=air_hum)
-            data["real"]["vpd"] = {"value": vpd, "unit": "kPa"}
+            data["measurements"]["real"]["vpd"] = {"value": vpd, "unit": "kPa"}
         
         if "light" in real_data:
             lux = real_data["light"]["value"]
 
             ppfd = ppfd_converter(lux)
-            data["real"]["ppfd"] = {"value": ppfd, "unit": "μmol/m²/s"}
+            data["measurements"]["real"]["ppfd"] = {"value": ppfd, "unit": "μmol/m²/s"}
 
     return sensor_data
 
@@ -62,18 +62,18 @@ def event_warning(processed_data, sensor_configs):
     events = []
 
     for data_pack in processed_data:
-        sensor_name = data_pack["sensor_name"]
+        sensor_id = data_pack["sensor_id"]
         measurements = data_pack["measurements"]["real"]
 
         for measurement, value_dict in measurements.items():
             if measurement == "light":
                 continue
             if value_dict["value"] is None:
-                print(f"Keine Messwerte für Sensor: {sensor_name} verfügbar.")
+                print(f"Keine Messwerte für Sensor: {sensor_id} verfügbar.")
                 continue
             try:
-                limit_min = sensor_configs[sensor_name][measurement]["min"]
-                limit_max = sensor_configs[sensor_name][measurement]["max"]
+                limit_min = sensor_configs[sensor_id][measurement]["min"]
+                limit_max = sensor_configs[sensor_id][measurement]["max"]
 
                 if value_dict["value"] < limit_min:
                     event_warning = "event_low"
@@ -86,7 +86,7 @@ def event_warning(processed_data, sensor_configs):
                     limit = None
 
                 event_pack = {
-                    "sensor_name": sensor_name,
+                    "sensor_id": sensor_id,
                     "measurement": measurement,
                     "value": value_dict["value"],
                     "limit": limit,
@@ -97,10 +97,13 @@ def event_warning(processed_data, sensor_configs):
 
             except Exception:
                 # Print wird im Live Betrieb entfernt!
-                print(f"[SYSTEM]: keine Limits definiert für Sensor: {sensor_name} / {measurement}")
+                print(f"[SYSTEM]: keine Limits definiert für Sensor: {sensor_id} / {measurement}")
                 continue
 
-    print(f"Folgende Events wurden getriggert:\n{events}")
+    if not events:
+        return events
+    else:
+        print(f"[SYSTEM]: Folgende Events wurden getriggert:\n{events}")
     return events
 
 

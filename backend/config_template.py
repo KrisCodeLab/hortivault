@@ -18,8 +18,8 @@ DB_LOGIN = {
 ### SENSOR CONFIGS ###
 
 SENSOR_CONFIGS = {
-    "Boden Temperatur": {
-        "temperatur": {
+    "sensor_01": {
+        "temperature": {
             "min": 40.0,
             "max": 70.0
         }

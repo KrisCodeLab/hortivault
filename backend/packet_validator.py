@@ -1,7 +1,6 @@
 """
 Validierung des ankommenden Datenpaketes unter verwendung von jsonschema.
 Unvollständige sowie falsch strukturierte Datenpakete werden verworfen. 
-
 """
 from jsonschema import validate, ValidationError
 
