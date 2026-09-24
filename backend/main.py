@@ -5,25 +5,18 @@ import data_manager as manager
 import sensor_logic as logic
 import api
 
-serial_listener = listener.SerialListener(**config.SERIAL_READER)
-data_manager = manager.DataManager(**config.DB_LOGIN)
-frontend_api = api.FrontendApi(**config.FRONTEND_API)
-
-serial_listener.start_listener_thread()
-frontend_api.start_api_thread()
-
-api_status_checker = 0
-
 if __name__ == "__main__":
+
+    serial_listener = listener.SerialListener(**config.SERIAL_READER)
+    data_manager = manager.DataManager(**config.DB_LOGIN)
+    frontend_api = api.FrontendApi(**config.FRONTEND_API)
+
+    serial_listener.start_listener_thread()
+    frontend_api.start_api_thread()
+    frontend_api.start_monitoring_thread()
 
     try:
         while True:
-            api_status_checker += 1
-
-            if api_status_checker == 50:
-                api_status_checker = 0
-                frontend_api.api_checker()
-
             sensor_data = serial_listener.get_data()
 
             if sensor_data:

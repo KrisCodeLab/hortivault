@@ -1,5 +1,6 @@
 import threading
 import copy
+import time
 import uvicorn
 import urllib.error
 import urllib.request
@@ -122,15 +123,22 @@ class FrontendApi:
 
         return True
 
-    def api_checker(self):
+    def start_monitoring_thread(self):
+        """API Monitoring Thread mir _api_checker() starten"""
+        monitoring_thread = threading.Thread(
+            target=self._api_checker, name="monitoring-thread", daemon=True
+        )
+        monitoring_thread.start()
+
+    def _api_checker(self):
         """Prüft ob der API Server online ist und startet diesen ggf. neu."""
-        self.server_online = self._check_server_health()
+        while True:
+            time.sleep(15)
 
-        thread_alive = self.thread is not None and self.thread.is_alive()
+            self.server_online = self._check_server_health()
 
-        # API-Server und Thread online
-        if self.server_online and thread_alive:
-            return
+            thread_alive = self.thread is not None and self.thread.is_alive()
 
-        else:
-            self._restart_api_thread()
+            # API-Server und Thread online
+            if not self.server_online and thread_alive:
+                self._restart_api_thread()
