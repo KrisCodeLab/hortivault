@@ -1,9 +1,6 @@
 ### SERIAL READER CONFIG ###
 
-SERIAL_READER = {
-    "USB_PORT": 'USB PORT',
-    "BAUD": 1234
-}
+SERIAL_READER = {"USB_PORT": "USB PORT", "BAUD": 1234}
 
 ### DB CONFIGS ###
 
@@ -12,17 +9,18 @@ DB_LOGIN = {
     "HOST": "host",
     "PORT": 1234,
     "USER": "user",
-    "PASSWORD": "password"
+    "PASSWORD": "password",
+}
+
+### API CONFIGS ###
+
+FRONTEND_API = {
+    "HOST": "xxx.xxx.xxx.xx",
+    "PORT": 12345,
 }
 
 ### SENSOR CONFIGS ###
 
 SENSOR_CONFIGS = {
-    "sensor_01": {
-        "temperature": {
-            "min": 40.0,
-            "max": 70.0
-        }
-    },
-
+    "sensor_01": {"temperature": {"min": 40.0, "max": 70.0}},
 }

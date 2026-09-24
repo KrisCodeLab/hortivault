@@ -5,17 +5,16 @@ import queue
 import json
 import packet_validator as validator
 
+
 class SerialListener:
     MEASUREMENT_DATA_PREFIX = "MEASUREMENT|"
-
 
     def __init__(self, USB_PORT, BAUD):
         self.USB_PORT = USB_PORT
         self.BAUD = BAUD
-        
+
         self.interface = None
         self.queue = queue.Queue()
-
 
     def _listen(self):
         """USB Port aktivieren, Puffer löschen, Daten auslesen, validieren und Daten in Queue schicken"""
@@ -34,35 +33,41 @@ class SerialListener:
 
             while True:
                 try:
-                    sensor_data = self.interface.readline().decode('utf-8', errors='ignore').strip()
-                    if sensor_data:      
+                    sensor_data = (
+                        self.interface.readline()
+                        .decode("utf-8", errors="ignore")
+                        .strip()
+                    )
+                    if sensor_data:
 
                         if sensor_data.startswith(self.MEASUREMENT_DATA_PREFIX):
-                            sensor_data = sensor_data.removeprefix(self.MEASUREMENT_DATA_PREFIX)
+                            sensor_data = sensor_data.removeprefix(
+                                self.MEASUREMENT_DATA_PREFIX
+                            )
                             try:
                                 parsed_sensor_data = json.loads(sensor_data)
                                 if validator.packet_validator(parsed_sensor_data):
                                     self.queue.put(parsed_sensor_data)
                                 else:
                                     continue
-             
+
                             except json.JSONDecodeError as e:
                                 print(f"[ERROR]: {e}")
                                 continue
                         else:
-                            print(f"[SYSTEM]: {sensor_data}")  
+                            print(f"[SYSTEM]: {sensor_data}")
 
                 except Exception as e:
                     self.interface = None
                     print(f"[ERROR]: {e} USB PORT {self.USB_PORT} nicht belegt!")
                     break
 
-    
     def start_listener_thread(self):
         """Thread starten und _listen ausführen"""
-        new_thread = threading.Thread(target=self._listen, daemon=True)                        
+        new_thread = threading.Thread(
+            target=self._listen, name="serial-listener", daemon=True
+        )
         new_thread.start()
-
 
     def get_data(self):
         """Queue auslesen"""
@@ -71,12 +76,12 @@ class SerialListener:
 
 
 if __name__ == "__main__":
-    
-    test_listener = SerialListener(USB_PORT='/dev/ttyUSB0', BAUD=115200)
+
+    test_listener = SerialListener(USB_PORT="/dev/ttyUSB0", BAUD=115200)
     test_listener.start_listener_thread()
 
     print("Starte Datenabfrage...")
-    
+
     try:
         while True:
             data = test_listener.get_data()

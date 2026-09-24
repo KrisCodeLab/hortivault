@@ -1,8 +1,8 @@
 import json
 import psycopg2 as psql
 
-class DataManager:
 
+class DataManager:
 
     def __init__(self, DATABASE, HOST, PORT, USER, PASSWORD):
         self.database = DATABASE
@@ -16,20 +16,20 @@ class DataManager:
         self.connection = None
         self._connect()
 
-        
     def _connect(self):
         """Verbindung zur PostgreSQL DB aufbauen"""
         try:
             print(f"[SYSTEM]: Verbindung zu {self.database} aufbauen...")
-            self.connection = psql.connect(dbname=self.database, 
-                                        host=self.host, 
-                                        port=self.port, 
-                                        user=self.user, 
-                                        password=self.password)
+            self.connection = psql.connect(
+                dbname=self.database,
+                host=self.host,
+                port=self.port,
+                user=self.user,
+                password=self.password,
+            )
         except psql.Error as e:
             self.connection = None
             print(f"[DB ERROR]: {e}")
-
 
     def _data_reader(self, sensor_data):
         """Verarbeitet das Datenpaket des USB-Listeners und bereitet es zur Speicherung in die DB vor."""
@@ -38,29 +38,37 @@ class DataManager:
         for sensor, data in sensor_data.items():
             sensor_id = sensor
             display_name = data["display_name"]
-            measurements = {"real": data["measurements"]["real"], "raw": data["measurements"]["raw"]}
+            measurements = {
+                "real": data["measurements"]["real"],
+                "raw": data["measurements"]["raw"],
+            }
             is_test = data["measurements"]["is_test"]
-                
+
             data_pack = {
                 "sensor_id": sensor_id,
                 "display_name": display_name,
                 "measurements": measurements,
-                "is_test": is_test
+                "is_test": is_test,
             }
 
             processed_data.append(data_pack)
         return processed_data
-    
 
-    def _live_data(self, processed_data):
-        """Ausgabe der Live Daten"""
+    def live_data(self, processed_data):
+        """Live Daten an das Frontend übergeben"""
+        live_data = {}
+
         for data_pack in processed_data:
-            sensor_name = data_pack["display_name"]
+            sensor_id = data_pack["sensor_id"]
+            display_name = data_pack["display_name"]
             measurements = data_pack["measurements"]["real"]
-            
-            print(f"{sensor_name}:")
-            print(f"{measurements}\n")
-            
+
+            live_data[sensor_id] = {
+                "display_name": display_name,
+                "measurements": measurements,
+            }
+
+        return live_data
 
     def _db_import(self, processed_data):
         """Import der Daten in die PostreSQL Datenbank"""
@@ -69,10 +77,10 @@ class DataManager:
 
         if self.connection is None:
             return
-        
+
         try:
             cursor = self.connection.cursor()
-        
+
             for data_pack in processed_data:
                 sensor_pk = self._sensor_id_checker(data_pack["sensor_id"])
 
@@ -89,20 +97,19 @@ class DataManager:
                 cursor.execute(sql_command, (sensor_pk, measurements, is_test))
 
             if self.connection is not None:
-                self.connection.commit()   
-        
+                self.connection.commit()
+
         except psql.Error as e:
             self.connection = None
             print(f"[DB ERROR]: {e}")
 
         finally:
-            if 'cursor' in locals():
+            if "cursor" in locals():
                 try:
-                    cursor.close() # type: ignore
+                    cursor.close()  # type: ignore
                 except Exception:
-                    pass  
+                    pass
 
-    
     def _sensor_id_checker(self, sensor_id):
         """Überprüft ob sich ein Sensor im cache oder in der DB befindet und gibt dessen ID zurück"""
         if sensor_id in self.sensor_cache:
@@ -113,18 +120,20 @@ class DataManager:
 
         if self.connection is None:
             return
-        
+
         try:
             cursor = self.connection.cursor()
             sql_command = "SELECT id FROM sensors WHERE technical_id = %s"
-            
+
             cursor.execute(sql_command, (sensor_id,))
             result = cursor.fetchone()
 
             if result is None:
-                    print(f"[DB ERROR]: Sensor '{sensor_id}' ist unbekannt in der HortiVault Datenbank!")
-                    cursor.close()
-                    return
+                print(
+                    f"[DB ERROR]: Sensor '{sensor_id}' ist unbekannt in der HortiVault Datenbank!"
+                )
+                cursor.close()
+                return
 
             sensor_pk = result[0]
             cursor.close()
@@ -132,27 +141,26 @@ class DataManager:
             self.sensor_cache[sensor_id] = sensor_pk
 
             return sensor_pk
-        
+
         except psql.Error as e:
             self.connection = None
             print(f"[DB ERROR]: {e}")
 
-
     def _sensor_event_checker(self, sensor_id, measurement):
         """Überprüft ob sich ein offenes Event im cache oder in der DB befindet und gibt diese zurück."""
         if (sensor_id, measurement) in self.event_cache:
-            
-                event = self.event_cache.get((sensor_id, measurement))
-                resolved = False
-                
-                return event, resolved
-            
+
+            event = self.event_cache.get((sensor_id, measurement))
+            resolved = False
+
+            return event, resolved
+
         if self.connection is None:
             self._connect()
 
         if self.connection is None:
             return None, None
-            
+
         try:
             cursor = self.connection.cursor()
             sql_command = "SELECT event, resolved FROM events WHERE sensor_id = %s and measurement_type = %s and resolved = false"
@@ -176,25 +184,21 @@ class DataManager:
             print(f"[DB ERROR]: {e}")
             return None, None
 
-
     def data_distributor(self, sensor_data):
         """
-        Methode für main.py, in welcher folgende Methoden aufgerufen werden: 
+        Methode für main.py, in welcher folgende Methoden aufgerufen werden:
         _data_reader
         _live_data
         _db_import
         """
         processed_data = self._data_reader(sensor_data)
-
-        self._live_data(processed_data)
         self._db_import(processed_data)
 
         return processed_data
 
-
     def event_distributor(self, events):
         """
-        Filter das Event "event_ok" aus, überwacht Zustandsänderungen von zu lösenden Events 
+        Filter das Event "event_ok" aus, überwacht Zustandsänderungen von zu lösenden Events
         und updatet die Tabelle events.
         """
         if self.connection is None:
@@ -202,7 +206,7 @@ class DataManager:
 
         if self.connection is None:
             return
-        
+
         try:
             cursor = self.connection.cursor()
 
@@ -214,7 +218,7 @@ class DataManager:
 
                 if sensor_pk is None:
                     continue
-                
+
                 measurement = event_pack["measurement"]
                 new_event = event_pack["event"]
 
@@ -227,7 +231,7 @@ class DataManager:
                 if resolved is None and new_event == "event_ok":
                     print("keine Warnmeldung und keine ungelösten Events in der DB")
                     continue
-                
+
                 # bestehendes ungelöstes Event
                 if resolved is False and new_event == event:
                     print("bestehendes ungelöstes Event")
@@ -240,39 +244,45 @@ class DataManager:
                     cursor.execute(sql_command, (sensor_pk, measurement))
                     del self.event_cache[(sensor_pk, measurement)]
                     continue
-                
+
                 # neues zu lösendes Event mit keinen offenen Events in der DB
                 if resolved is None and new_event != "event_ok":
                     print("neues zu lösendes Event mit keinen offenen Events in der DB")
                     value = event_pack["value"]
 
                     sql_command = "INSERT INTO events (sensor_id, measurement_type, event, triggered_value) VALUES (%s, %s, %s, %s)"
-                    cursor.execute(sql_command, (sensor_pk, measurement, new_event, value))
+                    cursor.execute(
+                        sql_command, (sensor_pk, measurement, new_event, value)
+                    )
                     self.event_cache[(sensor_pk, measurement)] = new_event
                     continue
 
                 # Zustandsänderung von einem alten zu einem neuen zu lösenden Event
-                print("Zustandsänderung von einem alten zu einem neuen zu lösenden Event")
+                print(
+                    "Zustandsänderung von einem alten zu einem neuen zu lösenden Event"
+                )
                 if resolved is False and new_event != event:
                     sql_command = "UPDATE events SET resolved = true WHERE sensor_id = %s and measurement_type = %s and resolved = false"
                     cursor.execute(sql_command, (sensor_pk, measurement))
                     value = event_pack["value"]
 
                     sql_command = "INSERT INTO events (sensor_id, measurement_type, event, triggered_value) VALUES (%s, %s, %s, %s)"
-                    cursor.execute(sql_command, (sensor_pk, measurement, new_event, value))
+                    cursor.execute(
+                        sql_command, (sensor_pk, measurement, new_event, value)
+                    )
                     self.event_cache[(sensor_pk, measurement)] = new_event
                     continue
-            
+
             if self.connection is not None:
-                self.connection.commit()   
-        
+                self.connection.commit()
+
         except psql.Error as e:
             self.connection = None
             print(f"[DB ERROR]: {e}")
 
         finally:
-            if 'cursor' in locals():
+            if "cursor" in locals():
                 try:
-                    cursor.close() # type: ignore
+                    cursor.close()  # type: ignore
                 except Exception:
-                    pass  
+                    pass
